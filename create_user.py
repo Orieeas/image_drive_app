@@ -1,4 +1,6 @@
 import requests
+
+
 def create_user(name):
     url = 'http://localhost:8000/users'
     data = {'name': name}
@@ -7,6 +9,3 @@ def create_user(name):
         return response.json()
     else:
         raise Exception(f'Failed to create user: {response.text}')
-
-user = create_user('Johnx')
-

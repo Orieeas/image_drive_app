@@ -1,12 +1,15 @@
 CREATE TABLE users (
-    id VARCHAR(255) PRIMARY KEY,
-    name VARCHAR(255) NOT NULL UNIQUE,
-    token VARCHAR(36) NOT NULL UNIQUE
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR UNIQUE,
+    token VARCHAR UNIQUE
 );
 
-CREATE TABLE records (
-    id VARCHAR(255) PRIMARY KEY,
-    filename VARCHAR(255) NOT NULL UNIQUE,
-    user_id VARCHAR(255) REFERENCES users(id),
-    url VARCHAR(255) NOT NULL
+CREATE TABLE images (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    filename VARCHAR UNIQUE,
+    user_id UUID REFERENCES users(id),
+    url VARCHAR,
+    file VARCHAR,
+    img_mode VARCHAR,
+    img_size VARCHAR
 );

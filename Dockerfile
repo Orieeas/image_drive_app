@@ -13,6 +13,11 @@ RUN pip install ujson
 RUN pip install psycopg2
 RUN pip install pydub
 RUN pip install uuid
+RUN pip install pydantic
+RUN pip install base64
+RUN pip install PIL
+RUN pip install ast
+
 
 # Установите рабочую директорию
 WORKDIR /mpz
