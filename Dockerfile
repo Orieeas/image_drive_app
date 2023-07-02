@@ -1,22 +1,11 @@
 # Используйте официальный образ Python в качестве базового образа
 FROM python:3.10
+COPY requirements.txt .
 
+RUN pip install --no-cache-dir -r requirements.txt
 # Установите зависимости приложения
 RUN apt-get update && apt-get install -y --no-install-recommends gcc
 RUN pip install --upgrade pip
-RUN pip install fastapi
-RUN pip install uvicorn
-RUN pip install sqlalchemy
-RUN pip install asyncpg
-RUN pip install requests
-RUN pip install ujson
-RUN pip install psycopg2
-RUN pip install pydub
-RUN pip install uuid
-RUN pip install pydantic
-RUN pip install base64
-RUN pip install PIL
-RUN pip install ast
 
 
 # Установите рабочую директорию

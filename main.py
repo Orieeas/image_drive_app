@@ -1,20 +1,19 @@
 import uuid
 from fastapi import FastAPI, HTTPException, Depends
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
+from sqlalchemy import Column, String, ForeignKey, select
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from uuid import uuid4
 from pydantic import BaseModel
 from sqlalchemy.dialects.postgresql import UUID
-
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 
 app = FastAPI()
-SQLALCHEMY_DATABASE_URL = "postgresql+psycopg2://user:user@localhost:5432/quiz_questions"
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=True, bind=engine)
-Base = declarative_base()
-Base.metadata.create_all(bind=engine)
+SQLALCHEMY_DATABASE_URL = "postgresql+asyncpg://user:user@localhost:5432/quiz_questions"
+engine = create_async_engine(SQLALCHEMY_DATABASE_URL, echo=True)
 
+async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+Base = declarative_base()
 
 class User(Base):
     __tablename__ = "users"
@@ -24,7 +23,6 @@ class User(Base):
     token = Column(String, unique=True)
     records = relationship("Record", back_populates="user")
     images = relationship("Image", back_populates="user")
-
 
 class Record(Base):
     __tablename__ = "records"
@@ -36,16 +34,13 @@ class Record(Base):
     url = Column(String)
     file = Column(String)
 
-
 class CreateUserRequest(BaseModel):
     name: str
-
 
 class AddRecordRequest(BaseModel):
     user_id: str
     token: str
     audio: str
-
 
 class Image(Base):
     __tablename__ = "images"
@@ -69,43 +64,43 @@ class AddImageRequest(BaseModel):
     img_size: str
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
+async def get_db():
+    async with async_session() as session:
+        yield session
 
 @app.post("/users", response_model=dict)
 async def create_user(request: CreateUserRequest, session=Depends(get_db)):
-    user = session.query(User).filter_by(name=request.name).first()
+    user = await session.execute(select(User).where(User.name == request.name))
+    user= user.scalar()
     if user:
         raise HTTPException(status_code=400, detail="User already exists")
+
     token = str(uuid4())
     user_id = str(uuid4())
     user = User(name=request.name, token=token, id=user_id)
     session.add(user)
-    session.commit()
+    await session.commit()
     return {"user_id": user_id, "token": token}
-
 
 @app.post("/images", response_model=dict)
 async def add_image(request: AddImageRequest, session=Depends(get_db)):
-    user = session.query(User).filter_by(id=request.user_id, token=request.token).first()
+    user = await session.execute(select(User).where(User.id == request.user_id, User.token == request.token))
+    user = user.scalar()
     if not user:
         raise HTTPException(status_code=401, detail="Invalid user, token or url")
+
     id = str(uuid4())
     filename = str(uuid4())
     image = Image(id=id, filename=filename, user_id=request.user_id, url=f"{request.base_url}/image?id={id}&user={request.user_id}", file=request.image,img_mode=request.img_mode,img_size=request.img_size)
     session.add(image)
-    session.commit()
+    await session.commit()
     return {"url": image.url}
-
 
 @app.get("/image")
 async def get_image(url: str, user: str, session=Depends(get_db)):
-    image = session.query(Image).filter(Image.url == url, Image.user_id == user).first()
+    image = await session.execute(select(Image).where(Image.url == url, Image.user_id == user))
+    image = image.scalar()
     if not image:
         raise HTTPException(status_code=404, detail="Invalid user_id or url")
+
     return {"file": image.file, "img_mode":image.img_mode, "img_size":image.img_size}
